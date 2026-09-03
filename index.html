@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VLAN im Veranstaltungsnetz</title>
+<style>
+  :root{
+    --bench:#e6eaec;
+    --chassis:#262b2f;
+    --chassis-hi:#3b4247;
+    --silk:#828e95;
+    --ink:#161b1e;
+    --muted:#5c676e;
+    --line:#c8d0d4;
+    --card:#ffffff;
+    --ok:#2f7d4f;
+    --fail:#b3352c;
+    --v1:#94a3ab;
+    --v10:#cf931c;
+    --v20:#2f7dd1;
+    --v30:#3f9a63;
+    --v40:#7a5ea8;
+    --v50:#b3352c;
+    --v60:#2a9d9c;
+    --v70:#a4632a;
+    --vtrunk:#161b1e;
+    --off:#d3d9dc;
+    --mono:ui-monospace,"Cascadia Mono","Consolas","DejaVu Sans Mono",monospace;
+    --sans:"Segoe UI",-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bench);color:var(--ink);font-family:var(--sans);
+    font-size:16px;line-height:1.5;padding:28px 20px 64px;
+  }
+  .wrap{max-width:1080px;margin:0 auto}
+
+  h1{font-size:30px;font-weight:600;letter-spacing:-.015em;margin:0 0 6px}
+  .lede{max-width:62ch;color:var(--muted);margin:0 0 26px}
+  h2{font-size:19px;font-weight:600;margin:0 0 14px}
+  section{margin-bottom:34px}
+  .hidden{display:none!important}
+
+  .note{
+    background:#fdf8e8;border:1px solid #e6d9a8;border-left:4px solid #cf931c;
+    border-radius:3px;padding:15px 18px;max-width:66ch;margin:0 0 18px;font-size:15px;
+  }
+  .note h3{margin:0 0 6px;font-size:15px;font-weight:600}
+  .note p{margin:0 0 8px}
+  .note p:last-child{margin-bottom:0}
+  .note code{font-family:var(--mono);background:#f4ecd2;padding:1px 5px;border-radius:2px;font-size:14px}
+
+  .browser{
+    background:#dfe3e6;border:1px solid #b9c1c6;border-radius:8px 8px 4px 4px;
+    overflow:hidden;box-shadow:0 3px 10px rgba(0,0,0,.09);
+  }
+  .bar{display:flex;align-items:center;gap:10px;padding:9px 12px;background:#dfe3e6}
+  .dots{display:flex;gap:6px;flex:0 0 auto}
+  .dots i{width:11px;height:11px;border-radius:50%;display:block}
+  .dots i:nth-child(1){background:#ec6a5e}
+  .dots i:nth-child(2){background:#f3bf4f}
+  .dots i:nth-child(3){background:#61c554}
+  .navbtn{flex:0 0 auto;color:#6b757b;font-size:15px;width:22px;text-align:center;user-select:none}
+  .urlbox{
+    flex:1 1 auto;display:flex;align-items:center;gap:8px;background:#fff;
+    border:1px solid #c3cace;border-radius:16px;padding:5px 14px;
+  }
+  .urlbox .shield{font-size:12px;color:#6b757b;white-space:nowrap;flex:0 0 auto}
+  .urlbox input{
+    flex:1 1 auto;border:0;outline:0;font-family:var(--sans);font-size:14px;
+    color:var(--ink);background:transparent;padding:2px 0;
+  }
+  .urlbox input:focus-visible{outline:0}
+  .go{
+    flex:0 0 auto;font-size:13px;padding:5px 12px;border-radius:14px;
+    border:1px solid #c3cace;background:#f2f5f6;cursor:pointer;
+  }
+  .viewport{background:#fff;border-top:1px solid #c3cace;min-height:260px;padding:26px 28px 30px}
+
+  .errpage{max-width:52ch;color:#3c454a}
+  .errpage .glyph{font-size:44px;color:#b6bfc4;line-height:1;margin-bottom:14px}
+  .errpage h3{font-size:21px;font-weight:400;margin:0 0 12px;color:#202124}
+  .errpage p{margin:0 0 10px;font-size:14.5px}
+  .errpage .code{font-family:var(--mono);font-size:12.5px;color:#7b858a;margin-top:16px}
+
+  .login{max-width:340px;margin:10px auto 20px}
+  .login .brand{border-bottom:2px solid var(--ink);padding-bottom:8px;margin-bottom:20px}
+  .login .brand b{display:block;font-size:17px}
+  .login .brand span{font-size:12.5px;color:var(--muted)}
+  .login label{display:block;font-size:13px;color:var(--muted);margin:0 0 4px}
+  .login .fld{margin-bottom:14px}
+  .loginmsg{color:var(--fail);font-size:14px;margin-top:12px;display:none}
+  .loginmsg.show{display:block}
+
+  .guihead{
+    display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
+    border-bottom:2px solid var(--ink);padding-bottom:9px;margin-bottom:18px;
+  }
+  .guihead b{font-size:17px}
+  .guihead span{font-size:13px;color:var(--muted)}
+
+  .chassis{
+    background:linear-gradient(180deg,var(--chassis-hi),var(--chassis));
+    border-radius:5px;padding:12px 16px;display:flex;align-items:center;gap:18px;overflow-x:auto;
+  }
+  .badge{
+    color:var(--silk);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    white-space:nowrap;border-left:2px solid var(--silk);padding-left:10px;line-height:1.35;
+  }
+  .badge b{display:block;color:#dfe5e8;font-weight:600;letter-spacing:.06em}
+  .leds{display:flex;gap:7px;margin-left:auto}
+  .led{width:18px;text-align:center;color:var(--silk);font-size:8.5px;font-family:var(--mono)}
+  .led i{
+    display:block;width:10px;height:10px;margin:0 auto 4px;border-radius:50%;
+    background:#4b5459;box-shadow:inset 0 0 0 1px rgba(0,0,0,.4);
+  }
+
+  .ports{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:14px}
+  .port{
+    background:#fbfcfc;border:1px solid var(--line);
+    border-top:4px solid var(--vc,var(--v1));border-radius:3px;
+    padding:12px 13px 13px;display:flex;flex-direction:column;
+  }
+  .port.uplink{background:#f5f3f8}
+  .port.empty{background:#f2f4f5}
+  .pnum{font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .pstat{font-weight:600;margin:2px 0 2px;font-size:14.5px;color:var(--ok)}
+  .pstat.down{color:#9aa5ab;font-weight:400}
+
+  .macone{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin:2px 0 10px;flex:1 1 auto}
+  .macnone{font-size:12.5px;color:#9aa5ab;margin:2px 0 10px;flex:1 1 auto}
+
+  .macs{margin:2px 0 10px;flex:1 1 auto}
+  .macs summary{
+    cursor:pointer;font-size:12.5px;color:var(--muted);
+    list-style:none;display:flex;align-items:center;gap:7px;padding:2px 0;user-select:none;
+  }
+  .macs summary::-webkit-details-marker{display:none}
+  .macs summary::before{
+    content:"+";display:inline-grid;place-items:center;width:15px;height:15px;flex:0 0 auto;
+    border:1px solid #b3bdc2;border-radius:2px;background:#fff;
+    font-family:var(--mono);font-size:12px;line-height:1;color:#5c676e;
+  }
+  .macs[open] summary::before{content:"\2212"}
+  .macs summary:hover{color:var(--ink)}
+  .macs summary:hover::before{border-color:#8b959b}
+  .macs summary:focus-visible{outline:2px solid #2f7dd1;outline-offset:2px;border-radius:2px}
+  .maclist{
+    font-family:var(--mono);font-size:11.5px;color:var(--muted);line-height:1.65;
+    padding:5px 0 0 15px;border-left:1px solid #dfe4e7;margin:5px 0 0 7px;
+  }
+  .maclist span{display:block}
+
+  select,input[type="text"],input[type="password"],input[type="number"]{
+    width:100%;font-family:inherit;font-size:14px;padding:6px 8px;
+    border:1px solid var(--line);border-radius:3px;background:#fff;color:var(--ink);
+  }
+  select:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid #2f7dd1;outline-offset:2px}
+  #cmd{font-family:var(--mono);font-size:14px}
+
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:3px;padding:18px 20px}
+  .intro{max-width:66ch;font-size:14.5px;color:var(--muted);margin:0 0 16px}
+  .intro code{font-family:var(--mono);font-size:13.5px;background:#eef1f2;padding:1px 5px;border-radius:2px}
+  .row{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}
+  .field{flex:1 1 220px}
+  .field label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+  .guess{margin:18px 0 0}
+  .guess p{margin:0 0 8px;font-size:14px;color:var(--muted)}
+
+  button{
+    font-family:inherit;font-size:14px;padding:8px 15px;border:1px solid var(--line);
+    background:#f4f6f7;color:var(--ink);border-radius:3px;cursor:pointer;
+  }
+  button:hover{background:#e9edef}
+  button[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .primary{background:#2f7dd1;border-color:#2f7dd1;color:#fff;font-weight:600}
+  .primary:hover{background:#2569b3}
+  .primary:disabled{background:#b8c2c8;border-color:#b8c2c8;cursor:not-allowed}
+  .send{margin-top:16px}
+
+  pre.term{
+    font-family:var(--mono);font-size:13px;line-height:1.6;background:#0f1416;color:#cfd6da;
+    padding:14px 16px;border-radius:3px;margin:16px 0 0;white-space:pre-wrap;min-height:120px;
+  }
+  pre.term.blocked{color:#f3bf4f}
+  .verdict{margin-top:12px;padding:10px 14px;border-radius:3px;font-size:14px;display:none}
+  .verdict.show{display:block}
+  .verdict.right{background:#e8f2ec;border-left:3px solid var(--ok);color:#1f5537}
+  .verdict.wrong{background:#f7eae9;border-left:3px solid var(--fail);color:#7d2620}
+  .verdict.tip{background:#f1f4f5;border-left:3px solid var(--muted);color:#3f484d}
+
+  ol.tasks{margin:0;padding:0;list-style:none;counter-reset:t}
+  ol.tasks li{
+    counter-increment:t;background:var(--card);border:1px solid var(--line);border-radius:3px;
+    padding:15px 18px;margin-bottom:10px;display:grid;grid-template-columns:34px 1fr;gap:14px;
+  }
+  ol.tasks li::before{
+    content:counter(t);font-family:var(--mono);font-size:15px;color:#fff;background:var(--ink);
+    width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
+  }
+  ol.tasks h3{font-size:15px;margin:0 0 4px;font-weight:600}
+  ol.tasks p{margin:0 0 10px;font-size:14.5px;max-width:66ch}
+
+  .cloze{
+    font-size:15.5px;line-height:2.1;max-width:64ch;background:#f7f9fa;
+    border:1px solid var(--line);border-radius:3px;padding:14px 16px;margin:0 0 12px;
+  }
+  .cloze select{width:auto;display:inline-block;font-size:14.5px;padding:3px 6px;background:#fff;margin:0 2px}
+
+  table.grid{border-collapse:collapse;width:100%;max-width:480px;margin:0 0 12px;font-size:14px}
+  table.grid th,table.grid td{border:1px solid var(--line);padding:6px 10px;text-align:left}
+  table.grid th{background:#262b2f;color:#fff;font-weight:600}
+  table.grid tr:nth-child(even) td{background:#f4f6f7}
+  table.grid td.frei{color:#9aa5ab}
+
+  .inline{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .inline select{width:auto;min-width:250px}
+  .followup{margin-top:14px;padding-top:14px;border-top:1px solid var(--line);display:none}
+  .followup.show{display:block}
+  .followup p{margin:0 0 10px}
+
+  .fb{font-size:14px;margin-top:8px;display:none}
+  .fb.show{display:block}
+  .fb.ok{color:var(--ok)}
+  .fb.no{color:var(--fail)}
+  .reveal{
+    margin-top:10px;font-size:14px;background:#f1f4f5;border-left:3px solid var(--muted);
+    padding:10px 14px;display:none;max-width:66ch;line-height:1.55;
+  }
+  .reveal.show{display:block}
+  .foot{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+
+  @media (max-width:820px){ .ports{grid-template-columns:repeat(2,1fr)} }
+  @media (max-width:460px){
+    .ports{grid-template-columns:1fr}
+    body{padding:20px 14px 48px}
+    h1{font-size:25px}
+    .viewport{padding:20px 16px 24px}
+    .inline select{min-width:0;width:100%}
+  }
+  @media (prefers-reduced-motion:reduce){ *{transition:none!important} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>VLAN im Veranstaltungsnetz</h1>
+  <p class="lede">Im Saal einer Veranstaltungsstätte hängen Geräte aus Licht, Ton und Video an einem gemeinsamen Switch mit sechzehn Ports. Alle liegen im Netz 192.168.1.0 mit der Subnetzmaske 255.255.255.0. Deine Aufgabe ist es, die Gewerke sauber voneinander zu trennen.</p>
+
+  <section id="stepStart">
+    <div class="note">
+      <h3>So kommst du auf den Switch</h3>
+      <p>Der Switch lässt sich über eine Weboberfläche im Browser einstellen. Dafür brauchst du seine Verwaltungsadresse. Sie lautet <code>192.168.1.10</code>.</p>
+      <p>Gib die Adresse unten in die Adresszeile ein. Für die Anmeldung verwendest du den Benutzernamen <code>admin</code> und das Passwort <code>admin</code>.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="browser">
+      <div class="bar">
+        <div class="dots"><i></i><i></i><i></i></div>
+        <div class="navbtn">&#8592;</div>
+        <div class="navbtn">&#8594;</div>
+        <div class="navbtn" id="reload">&#8635;</div>
+        <div class="urlbox">
+          <span class="shield" id="shield">&#9432;</span>
+          <input type="text" id="url" placeholder="Adresse eingeben" autocomplete="off" spellcheck="false" aria-label="Adresszeile">
+        </div>
+        <button class="go" id="go">Öffnen</button>
+      </div>
+
+      <div class="viewport" id="viewport">
+        <div id="pgBlank" style="color:#8b959b;font-size:14.5px">Neuer Tab</div>
+
+        <div id="pgError" class="errpage hidden">
+          <div class="glyph">&#9888;</div>
+          <h3>Diese Website ist nicht erreichbar</h3>
+          <p id="errHost">Die Antwort hat zu lange gedauert.</p>
+          <p>Versuche Folgendes:</p>
+          <p>Prüfe die eingegebene Adresse auf Tippfehler. Prüfe, ob das Gerät im selben Netz erreichbar ist.</p>
+          <div class="code">ERR_CONNECTION_TIMED_OUT</div>
+        </div>
+
+        <div id="pgLogin" class="login hidden">
+          <div class="brand"><b>Switch-Verwaltung</b><span>192.168.1.10</span></div>
+          <div class="fld">
+            <label for="user">Benutzername</label>
+            <input type="text" id="user" autocomplete="off" spellcheck="false">
+          </div>
+          <div class="fld">
+            <label for="pass">Passwort</label>
+            <input type="password" id="pass" autocomplete="off">
+          </div>
+          <button class="primary" id="doLogin">Anmelden</button>
+          <div class="loginmsg" id="loginMsg"></div>
+        </div>
+
+        <div id="pgGui" class="hidden">
+          <div class="guihead">
+            <b>Portverwaltung</b>
+            <span>Access-Switch Saal, 16 Ports, angemeldet als admin</span>
+          </div>
+          <div class="chassis">
+            <div class="badge"><b>Access-Switch Saal</b>16 Ports · Layer 2</div>
+            <div class="leds" id="leds"></div>
+          </div>
+          <div class="ports" id="ports"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div id="afterLogin" class="hidden">
+
+    <section>
+      <h2>Verbindung testen</h2>
+      <div class="panel">
+        <p class="intro">Die Weboberfläche zeigt nur Ports, Status und gelernte MAC-Adressen. Ein Switch kennt die IP-Adressen der angeschlossenen Geräte nicht. Welches Gerät an welchem Port hängt und welche IP-Adresse es hat, steht in der Netzwerkdokumentation. Mit dem Befehl <code>ping</code> prüfst du, ob ein Gerät ein anderes erreicht, zum Beispiel <code>ping 192.168.1.11</code>.</p>
+
+        <div class="row">
+          <div class="field">
+            <label for="src">Du arbeitest am Gerät an</label>
+            <select id="src"></select>
+          </div>
+          <div class="field">
+            <label for="cmd">Befehl eingeben</label>
+            <input type="text" id="cmd" placeholder="ping 192.168.1.__" autocomplete="off" spellcheck="false">
+          </div>
+        </div>
+
+        <div class="guess">
+          <p>Was erwartest du?</p>
+          <button id="gYes" aria-pressed="false">Erreichbar</button>
+          <button id="gNo" aria-pressed="false">Nicht erreichbar</button>
+        </div>
+
+        <button class="primary send" id="send" disabled>Befehl ausführen</button>
+
+        <pre class="term" id="term">Wähle ein Gerät, gib den Ping-Befehl ein und tippe auf ein Ergebnis.</pre>
+        <div class="verdict" id="verdict"></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Aufgaben</h2>
+      <ol class="tasks">
+
+        <li>
+          <div>
+            <h3>Der Merksatz</h3>
+            <p>Vervollständige den Satz mit den passenden Begriffen.</p>
+            <div class="cloze">
+              Ein VLAN trennt Geräte
+              <select id="cz1">
+                <option value="">bitte wählen</option>
+                <option value="logisch">logisch</option>
+                <option value="physikalisch">physikalisch</option>
+                <option value="elektrisch">elektrisch</option>
+                <option value="zeitlich">zeitlich</option>
+              </select>
+              voneinander, obwohl sie
+              <select id="cz2">
+                <option value="">bitte wählen</option>
+                <option value="physikalisch">physikalisch</option>
+                <option value="logisch">logisch</option>
+                <option value="drahtlos">drahtlos</option>
+                <option value="gar nicht">gar nicht</option>
+              </select>
+              am selben Switch angeschlossen sind.
+            </div>
+            <button data-check="1">Prüfen</button>
+            <div class="fb" id="fb1"></div>
+            <div class="reveal" id="rev1"></div>
+          </div>
+        </li>
+
+        <li>
+          <div>
+            <h3>Ausgangslage prüfen</h3>
+            <p>Alle Ports stehen auf VLAN 1. Licht, Ton und Video liegen also gemeinsam in einem Netz. Teste drei beliebige Verbindungen und halte fest, was passiert.</p>
+            <button data-check="2">Prüfen</button>
+            <div class="fb" id="fb2"></div>
+          </div>
+        </li>
+
+        <li>
+          <div>
+            <h3>Die Gewerke trennen</h3>
+            <p>Licht, Ton und Video sollen sich nicht mehr gegenseitig erreichen. Der VLAN-Plan des Hauses ist bereits festgelegt und gilt für alle Switches:</p>
+            <table class="grid">
+              <tr><th>VLAN</th><th>Verwendung</th></tr>
+              <tr><td>1</td><td>Standard, nicht verwenden</td></tr>
+              <tr><td>10</td><td>Licht</td></tr>
+              <tr><td>20</td><td>Ton</td></tr>
+              <tr><td>30</td><td>Video</td></tr>
+              <tr><td>40</td><td>Ton Nebensaal</td></tr>
+              <tr><td>50</td><td class="frei">frei</td></tr>
+              <tr><td>60</td><td class="frei">frei</td></tr>
+              <tr><td>70</td><td class="frei">frei</td></tr>
+            </table>
+            <p>Ordne die Ports nach diesem Plan zu. Welches Gerät zu welchem Gewerk gehört, findest du in der Netzwerkdokumentation. Teste danach eine Verbindung innerhalb des Lichtnetzes und eine vom Licht zum Ton.</p>
+            <button data-check="3">Prüfen</button>
+            <div class="fb" id="fb3"></div>
+          </div>
+        </li>
+
+        <li>
+          <div>
+            <h3>Den Gasttechniker isolieren</h3>
+            <p>Eine Fremdfirma bringt für eine Veranstaltung einen eigenen Laptop mit und steckt ihn in den Switch. Das Gerät soll kein anderes Gerät im Haus erreichen. Wähle dafür ein VLAN, das im Plan noch frei ist, und weise die Trennung mit mindestens zwei Tests nach.</p>
+            <button data-check="4">Prüfen</button>
+            <div class="fb" id="fb4"></div>
+          </div>
+        </li>
+
+        <li>
+          <div>
+            <h3>Der Showdaten-Server für alle</h3>
+            <p>Auf dem Showdaten-Server liegen die Showfiles aller Gewerke. Er soll sowohl aus dem Lichtnetz als auch aus dem Tonnetz erreichbar sein. Probiere aus, ob du das mit den VLAN-Einstellungen lösen kannst.</p>
+            <button data-check="5">Prüfen</button>
+            <div class="fb" id="fb5"></div>
+            <div class="reveal" id="rev5"></div>
+          </div>
+        </li>
+
+        <li>
+          <div>
+            <h3>Drei Kabel in die Regie</h3>
+            <p>In der Regie steht ein zweiter verwalteter Switch. Dort hängen ein Backup-Rechner für Licht, eine Stagebox für Ton und ein zweiter Medienserver. Alle drei Gewerke sollen die Regie erreichen. Eine Möglichkeit ist, für jedes VLAN ein eigenes Kabel zu ziehen.</p>
+            <p>Richte diese Lösung ein: Wähle drei freie Ports aus und stelle jeden davon auf ein anderes der drei benötigten VLANs.</p>
+            <button data-check="6">Prüfen</button>
+            <div class="fb" id="fb6"></div>
+
+            <div class="followup" id="follow6">
+              <p>Die Lösung funktioniert, verbraucht aber auf jeder Seite drei Ports und drei Leitungen. In einem Haus mit zehn VLANs wären es zehn.</p>
+              <div class="inline">
+                <label for="better" style="font-size:14px;color:var(--muted)">Womit ginge das mit einer einzigen Leitung?</label>
+                <select id="better">
+                  <option value="">bitte wählen</option>
+                  <option value="router">Ein Router zwischen beiden Switches</option>
+                  <option value="trunk">Ein Trunk-Port</option>
+                  <option value="unmanaged">Ein Switch ohne Verwaltung</option>
+                  <option value="netz">Ein eigenes IP-Netz je Gewerk</option>
+                  <option value="kabel">Eine Glasfaserstrecke statt Kupfer</option>
+                </select>
+                <button data-check="6b">Prüfen</button>
+              </div>
+              <div class="fb" id="fb6b"></div>
+              <div class="reveal" id="rev6"></div>
+            </div>
+          </div>
+        </li>
+
+        <li>
+          <div>
+            <h3>Den Uplink zur Regie einrichten</h3>
+            <p>An Port 9 liegt bereits eine Leitung zum Switch in der Regie. Stelle diesen Port so ein, dass alle drei VLANs über diese eine Leitung laufen. Stelle die drei Ports aus der vorherigen Aufgabe wieder auf VLAN 1 zurück. Weise das Ergebnis nach: eine Verbindung vom Lichtnetz zum Backup-Rechner in der Regie und eine vom Tonnetz zur Stagebox in der Regie.</p>
+            <button data-check="7">Prüfen</button>
+            <div class="fb" id="fb7"></div>
+            <div class="reveal" id="rev7"></div>
+          </div>
+        </li>
+
+        <li>
+          <div>
+            <h3>Der Nebensaal</h3>
+            <p>An Port 10 hängt ein einfacher Switch ohne Verwaltung. Dahinter stehen im Nebensaal zwei Endstufen und ein Lautsprecher-Controller. Der Nebensaal soll zunächst ein eigenes Tonnetz bekommen.</p>
+            <p>Stelle Port 10 auf das VLAN für den Nebensaal und prüfe vom Tonnetz aus, ob du eine Endstufe erreichst.</p>
+            <button data-check="8">Prüfen</button>
+            <div class="fb" id="fb8"></div>
+
+            <div class="followup" id="follow8">
+              <p>Die Endstufen sind vom Tonpult aus nicht erreichbar. Damit lässt sich auch kein Audiosignal dorthin schicken.</p>
+              <div class="inline">
+                <label for="fix8" style="font-size:14px;color:var(--muted)">Was musst du ändern, damit die Boxen bespielbar werden?</label>
+                <select id="fix8">
+                  <option value="">bitte wählen</option>
+                  <option value="trunk">Port 10 auf Trunk stellen</option>
+                  <option value="gleich">Den Nebensaal in dasselbe VLAN wie das Tonnetz legen</option>
+                  <option value="ip">Den Endstufen feste IP-Adressen geben</option>
+                  <option value="kabel">Eine zweite Leitung in den Nebensaal ziehen</option>
+                </select>
+                <button data-check="8b">Prüfen</button>
+              </div>
+              <div class="fb" id="fb8b"></div>
+              <div class="reveal" id="rev8"></div>
+            </div>
+          </div>
+        </li>
+
+      </ol>
+      <div class="foot">
+        <button id="reset">Alle Ports auf VLAN 1</button>
+        <button id="toggleGroups" aria-pressed="false">Gruppen anzeigen</button>
+      </div>
+      <div class="reveal" id="groups"></div>
+    </section>
+
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var SWITCH_IP = "192.168.1.10";
+
+  var VLANS = [
+    {id:1,  name:"VLAN 1 (Standard)", color:"var(--v1)"},
+    {id:10, name:"VLAN 10",           color:"var(--v10)"},
+    {id:20, name:"VLAN 20",           color:"var(--v20)"},
+    {id:30, name:"VLAN 30",           color:"var(--v30)"},
+    {id:40, name:"VLAN 40",           color:"var(--v40)"},
+    {id:50, name:"VLAN 50",           color:"var(--v50)"},
+    {id:60, name:"VLAN 60",           color:"var(--v60)"},
+    {id:70, name:"VLAN 70",           color:"var(--v70)"}
+  ];
+  var TRUNK = {id:"trunk", name:"Trunk (alle VLANs)", color:"var(--vtrunk)"};
+
+  var LOCAL = [
+    {port:1, name:"grandMA3 Fullsize",      ip:"192.168.1.11", mac:"00:1E:C0:3A:11:04", ping:false, art:"pult"},
+    {port:2, name:"PC onPC Licht",          ip:"192.168.1.12", mac:"3C:97:0E:A1:44:2B", ping:true,  art:"pc"},
+    {port:3, name:"Tonpult DiGiCo SD12",    ip:"192.168.1.13", mac:"00:0C:6E:7B:20:1A", ping:false, art:"pult"},
+    {port:4, name:"Stagebox SD-Rack",       ip:"192.168.1.14", mac:"00:0C:6E:7B:20:2F", ping:false, art:"rack"},
+    {port:5, name:"PC Ton Dante Controller",ip:"192.168.1.15", mac:"3C:97:0E:A1:47:9C", ping:true,  art:"pc"},
+    {port:6, name:"Medienserver 1",         ip:"192.168.1.16", mac:"B8:2A:72:04:C1:6D", ping:true,  art:"pc"},
+    {port:7, name:"Laptop Gasttechniker",   ip:"192.168.1.17", mac:"F0:2F:74:6C:22:19", ping:true,  art:"pc"},
+    {port:8, name:"Showdaten-Server",       ip:"192.168.1.18", mac:"A4:BB:6D:55:0E:71", ping:true,  art:"pc"}
+  ];
+
+  var REMOTE = [
+    {name:"PC onPC Backup Regie", ip:"192.168.1.21", mac:"A0:36:9F:11:04:C8", vlan:10},
+    {name:"Stagebox Regie",       ip:"192.168.1.22", mac:"00:0C:6E:7B:24:B3", vlan:20},
+    {name:"Medienserver 2",       ip:"192.168.1.23", mac:"6C:3B:6B:22:9A:41", vlan:30}
+  ];
+
+  var DUMB = [
+    {name:"Endstufe 1 Nebensaal",   ip:"192.168.1.31", mac:"D8:5E:D3:07:1B:44"},
+    {name:"Endstufe 2 Nebensaal",   ip:"192.168.1.32", mac:"D8:5E:D3:07:1B:45"},
+    {name:"Lautsprecher-Controller",ip:"192.168.1.33", mac:"00:1D:C1:44:9E:02"}
+  ];
+
+  var PORTS = [];
+  for(var pi=1; pi<=16; pi++){ PORTS.push(pi); }
+  var FREE = [11,12,13,14,15,16];
+
+  var LICHT = [1,2];
+  var TON   = [3,4,5];
+  var VIDEO = [6];
+
+  var state = {};
+  PORTS.forEach(function(p){ state[p] = 1; });
+
+  var log = [];
+  var guess = null;
+  var trunkTried10 = false;
+  var openMacs = {};
+
+  var $ = function(id){ return document.getElementById(id); };
+
+  /* ================= Browser ================= */
+  var elUrl = $("url"), elGo = $("go"), elShield = $("shield");
+  var pgBlank = $("pgBlank"), pgError = $("pgError"), pgLogin = $("pgLogin"), pgGui = $("pgGui");
+
+  function showPage(which){
+    [pgBlank, pgError, pgLogin, pgGui].forEach(function(p){ p.classList.add("hidden"); });
+    which.classList.remove("hidden");
+  }
+  function normalize(v){
+    return v.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "");
+  }
+  function openUrl(){
+    var raw = elUrl.value.trim();
+    if(raw === ""){ showPage(pgBlank); elShield.innerHTML = "&#9432;"; return; }
+    if(normalize(raw) === SWITCH_IP){
+      elUrl.value = "http://" + SWITCH_IP;
+      elShield.textContent = "Nicht sicher";
+      if(pgGui.dataset.ready === "1"){ showPage(pgGui); }
+      else { showPage(pgLogin); $("user").focus(); }
+    }else{
+      elShield.innerHTML = "&#9432;";
+      $("errHost").textContent = raw + " hat zu lange gebraucht, um zu antworten.";
+      showPage(pgError);
+    }
+  }
+  elGo.addEventListener("click", openUrl);
+  $("reload").addEventListener("click", openUrl);
+  elUrl.addEventListener("keydown", function(e){ if(e.key === "Enter") openUrl(); });
+
+  /* ================= Anmeldung ================= */
+  $("doLogin").addEventListener("click", function(){
+    var u = $("user").value.trim().toLowerCase();
+    var p = $("pass").value;
+    var msg = $("loginMsg");
+    if(u === "admin" && p === "admin"){
+      msg.className = "loginmsg";
+      pgGui.dataset.ready = "1";
+      showPage(pgGui);
+      $("afterLogin").classList.remove("hidden");
+      $("stepStart").classList.add("hidden");
+    }else{
+      msg.className = "loginmsg show";
+      msg.textContent = "Anmeldung fehlgeschlagen. Benutzername oder Passwort ist falsch.";
+    }
+  });
+  $("pass").addEventListener("keydown", function(e){ if(e.key === "Enter") $("doLogin").click(); });
+  $("user").addEventListener("keydown", function(e){ if(e.key === "Enter") $("pass").focus(); });
+
+  /* ================= Hilfsfunktionen ================= */
+  function colorOf(v){
+    if(v === "trunk") return TRUNK.color;
+    for(var i=0;i<VLANS.length;i++){ if(VLANS[i].id===v) return VLANS[i].color; }
+    return "var(--v1)";
+  }
+  function localByPort(p){
+    for(var i=0;i<LOCAL.length;i++){ if(LOCAL[i].port===p) return LOCAL[i]; }
+    return null;
+  }
+  function macsOf(port){
+    if(port <= 8) return [localByPort(port).mac];
+    if(port === 9) return REMOTE.map(function(d){ return d.mac; });
+    if(port === 10) return DUMB.map(function(d){ return d.mac; });
+    return [];
+  }
+  function vlanLabel(v){ return v === "trunk" ? "Trunk" : "VLAN " + v; }
+
+  function findTarget(ip){
+    for(var i=0;i<LOCAL.length;i++){
+      if(LOCAL[i].ip === ip) return {kind:"local", port:LOCAL[i].port, dev:LOCAL[i]};
+    }
+    for(var j=0;j<REMOTE.length;j++){
+      if(REMOTE[j].ip === ip) return {kind:"remote", port:9, dev:REMOTE[j]};
+    }
+    for(var k=0;k<DUMB.length;k++){
+      if(DUMB[k].ip === ip) return {kind:"dumb", port:10, dev:DUMB[k]};
+    }
+    return null;
+  }
+
+  function isReachable(srcPort, target){
+    var sv = state[srcPort];
+    if(sv === "trunk") return false;
+    if(target.kind === "local"){ return state[target.port] === sv; }
+    if(target.kind === "remote"){
+      var m9 = state[9];
+      if(m9 === "trunk") return target.dev.vlan === sv;
+      return m9 === sv && target.dev.vlan === sv;
+    }
+    var m10 = state[10];
+    if(m10 === "trunk") return false;
+    return m10 === sv;
+  }
+
+  /* ================= Weboberfläche ================= */
+  var elPorts = $("ports"), elLeds = $("leds");
+
+  function buildPorts(){
+    elPorts.innerHTML = "";
+    elLeds.innerHTML  = "";
+
+    PORTS.forEach(function(p){
+      var macs = macsOf(p);
+      var empty = macs.length === 0;
+
+      var card = document.createElement("div");
+      card.className = "port" + (p === 9 || p === 10 ? " uplink" : "") + (empty ? " empty" : "");
+      card.style.setProperty("--vc", empty ? "var(--off)" : colorOf(state[p]));
+
+      var num = document.createElement("div");
+      num.className = "pnum";
+      num.textContent = "Port " + p;
+
+      var st = document.createElement("div");
+      st.className = "pstat" + (empty ? " down" : "");
+      st.textContent = empty ? "Nicht verbunden" : "Verbunden";
+
+      var macBox;
+      if(empty){
+        macBox = document.createElement("div");
+        macBox.className = "macnone";
+        macBox.textContent = "keine MAC-Adresse";
+      }else if(macs.length === 1){
+        macBox = document.createElement("div");
+        macBox.className = "macone";
+        macBox.textContent = macs[0];
+      }else{
+        macBox = document.createElement("details");
+        macBox.className = "macs";
+        var sum = document.createElement("summary");
+        sum.textContent = macs.length + " MAC-Adressen";
+        macBox.appendChild(sum);
+        var list = document.createElement("div");
+        list.className = "maclist";
+        macs.forEach(function(m){
+          var s = document.createElement("span");
+          s.textContent = m;
+          list.appendChild(s);
+        });
+        macBox.appendChild(list);
+        if(openMacs[p]) macBox.open = true;
+        macBox.addEventListener("toggle", function(){ openMacs[p] = macBox.open; });
+      }
+
+      var sel = document.createElement("select");
+      sel.setAttribute("aria-label", "VLAN für Port " + p);
+      VLANS.concat([TRUNK]).forEach(function(v){
+        var o = document.createElement("option");
+        o.value = v.id;
+        o.textContent = v.name;
+        if(String(v.id) === String(state[p])) o.selected = true;
+        sel.appendChild(o);
+      });
+      sel.addEventListener("change", function(){
+        var val = sel.value === "trunk" ? "trunk" : parseInt(sel.value, 10);
+        state[p] = val;
+        if(p === 10 && val === "trunk") trunkTried10 = true;
+        if(!empty) card.style.setProperty("--vc", colorOf(val));
+        paintLeds();
+        renderGroups();
+        clearFeedback();
+      });
+
+      card.appendChild(num);
+      card.appendChild(st);
+      card.appendChild(macBox);
+      card.appendChild(sel);
+      elPorts.appendChild(card);
+
+      var led = document.createElement("div");
+      led.className = "led";
+      led.innerHTML = "<i></i>" + p;
+      elLeds.appendChild(led);
+    });
+
+    paintLeds();
+  }
+
+  function paintLeds(){
+    var dots = elLeds.querySelectorAll("i");
+    PORTS.forEach(function(p, i){
+      if(!dots[i]) return;
+      dots[i].style.background = macsOf(p).length === 0 ? "#4b5459" : colorOf(state[p]);
+    });
+  }
+
+  /* ================= Terminal ================= */
+  var elSrc = $("src"), elCmd = $("cmd"), elSend = $("send");
+  var elTerm = $("term"), elVerdict = $("verdict");
+  var elGYes = $("gYes"), elGNo = $("gNo");
+
+  function buildSource(){
+    elSrc.innerHTML = "";
+    LOCAL.forEach(function(d){
+      var o = document.createElement("option");
+      o.value = d.port;
+      o.textContent = "Port " + d.port;
+      elSrc.appendChild(o);
+    });
+    elSrc.selectedIndex = 0;
+  }
+
+  function setGuess(val){
+    guess = val;
+    elGYes.setAttribute("aria-pressed", val === true ? "true" : "false");
+    elGNo.setAttribute("aria-pressed",  val === false ? "true" : "false");
+    updateSend();
+  }
+  elGYes.addEventListener("click", function(){ setGuess(true); });
+  elGNo.addEventListener("click",  function(){ setGuess(false); });
+
+  function updateSend(){
+    elSend.disabled = (guess === null) || elCmd.value.trim() === "";
+  }
+  elCmd.addEventListener("input", updateSend);
+  elCmd.addEventListener("keydown", function(e){
+    if(e.key === "Enter" && !elSend.disabled) elSend.click();
+  });
+
+  function parseCommand(text){
+    var t = text.trim().replace(/\s+/g, " ");
+    var ipPattern = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
+    if(t === "") return {shell:"Es wurde kein Befehl eingegeben."};
+
+    var parts = t.split(" ");
+    var head = parts[0].toLowerCase();
+
+    if(head !== "ping"){
+      return {shell:'Der Befehl "' + parts[0] + '" ist entweder falsch geschrieben oder konnte nicht gefunden werden.'};
+    }
+    if(parts.length < 2){
+      return {shell:"Syntax: ping [-t] [-n Anzahl] Zielname"};
+    }
+
+    var target = parts[1];
+    var valid = ipPattern.test(target);
+    if(valid){
+      var oct = target.split(".");
+      for(var i=0;i<4;i++){ if(parseInt(oct[i],10) > 255){ valid = false; } }
+    }
+    if(!valid){
+      return {shell:'Ping-Anforderung konnte Host "' + target + '" nicht finden. Überprüfen Sie den Namen, und versuchen Sie es erneut.'};
+    }
+    return {ip:target};
+  }
+
+  elSend.addEventListener("click", function(){
+    var a = parseInt(elSrc.value, 10);
+    var da = localByPort(a);
+
+    elVerdict.className = "verdict";
+    elTerm.className = "term";
+
+    if(!da.ping){
+      elTerm.className = "term blocked";
+      elTerm.textContent = da.name
+        + "\n\nAuf diesem Gerät gibt es keine Kommandozeile des Betriebssystems.\n"
+        + "Pulte und Stageboxen antworten zwar auf einen Ping, können aber selbst\n"
+        + "keinen Ping-Befehl absetzen. Nutze dafür einen Rechner im selben Gewerk.";
+      return;
+    }
+
+    var res = parseCommand(elCmd.value);
+    if(res.shell){
+      elTerm.textContent = "C:\\Users\\technik> " + elCmd.value.trim() + "\n\n" + res.shell;
+      return;
+    }
+
+    var self = (res.ip === da.ip);
+    var target = findTarget(res.ip);
+    var reachable = self || (target !== null && isReachable(a, target));
+
+    elSend.disabled = true;
+    elTerm.textContent = "C:\\Users\\technik> ping " + res.ip
+      + "\n\nPing wird ausgeführt für " + res.ip + " mit 32 Bytes Daten:";
+
+    var step = 0;
+    var timer = setInterval(function(){
+      step++;
+      elTerm.textContent += reachable
+        ? "\nAntwort von " + res.ip + ": Bytes=32 Zeit<1ms TTL=128"
+        : "\nZeitüberschreitung der Anforderung.";
+      if(step === 4){
+        clearInterval(timer);
+        elTerm.textContent += "\n\nPing-Statistik für " + res.ip + ":"
+          + (reachable
+            ? "\n    Pakete: Gesendet = 4, Empfangen = 4, Verloren = 0 (0% Verlust)"
+            : "\n    Pakete: Gesendet = 4, Empfangen = 0, Verloren = 4 (100% Verlust)");
+        finish(a, target, res.ip, reachable, self);
+      }
+    }, 220);
+  });
+
+  function finish(srcPort, target, ip, reachable, self){
+    if(self){
+      elVerdict.className = "verdict show tip";
+      elVerdict.textContent = "Das ist die eigene Adresse. Der Rechner antwortet sich selbst.";
+      setGuess(null);
+      return;
+    }
+    if(target === null){
+      elVerdict.className = "verdict show tip";
+      elVerdict.textContent = "Unter " + ip + " ist an diesem Switch kein Gerät angeschlossen. Prüfe die Adresse in der Netzwerkdokumentation.";
+      setGuess(null);
+      return;
+    }
+
+    log.push({a:srcPort, b:target.port, kind:target.kind, ip:ip, reachable:reachable});
+
+    var hit = (guess === reachable);
+    var lage;
+    if(target.kind === "local"){
+      lage = "Port " + srcPort + " (" + vlanLabel(state[srcPort]) + ") und Port " + target.port
+           + " (" + vlanLabel(state[target.port]) + ") "
+           + (reachable ? "liegen im selben VLAN." : "liegen in verschiedenen VLANs.");
+    }else if(target.kind === "remote"){
+      lage = "Das Ziel steht am Switch in der Regie in VLAN " + target.dev.vlan
+           + ". Port 9 ist auf " + vlanLabel(state[9]) + " eingestellt.";
+    }else{
+      lage = "Das Ziel hängt am Switch ohne Verwaltung an Port 10. Dieser Port ist auf "
+           + vlanLabel(state[10]) + " eingestellt.";
+    }
+
+    elVerdict.className = "verdict show " + (hit ? "right" : "wrong");
+    elVerdict.textContent = (hit ? "Deine Vermutung war richtig. " : "Deine Vermutung war falsch. ") + lage;
+
+    setGuess(null);
+  }
+
+  /* ================= Gruppen ================= */
+  var elGroups = $("groups"), elTgl = $("toggleGroups");
+
+  elTgl.addEventListener("click", function(){
+    var on = elTgl.getAttribute("aria-pressed") === "true";
+    elTgl.setAttribute("aria-pressed", on ? "false" : "true");
+    elGroups.className = on ? "reveal" : "reveal show";
+    renderGroups();
+  });
+
+  function renderGroups(){
+    if(elTgl.getAttribute("aria-pressed") !== "true") return;
+    var map = {}, trunks = [];
+    PORTS.forEach(function(p){
+      if(macsOf(p).length === 0) return;
+      if(state[p] === "trunk"){ trunks.push("Port " + p); return; }
+      var v = state[p];
+      if(!map[v]) map[v] = [];
+      map[v].push("Port " + p);
+    });
+    var out = [];
+    Object.keys(map).sort(function(x,y){ return x-y; }).forEach(function(v){
+      out.push("VLAN " + v + ": " + map[v].join(", "));
+    });
+    if(trunks.length) out.push("Trunk: " + trunks.join(", "));
+    elGroups.textContent = out.length ? out.join("\n") : "Keine belegten Ports.";
+    elGroups.style.whiteSpace = "pre-line";
+  }
+
+  /* ================= Aufgaben ================= */
+  function tested(pred){
+    for(var i=0;i<log.length;i++){ if(pred(log[i])) return true; }
+    return false;
+  }
+  function allSame(ports, vlan){
+    return ports.every(function(p){ return state[p] === vlan; });
+  }
+  function say(id, ok, msg){
+    var el = $("fb" + id);
+    el.className = "fb show " + (ok ? "ok" : "no");
+    el.textContent = msg;
+  }
+  function clearFeedback(){
+    ["fb2","fb3","fb4","fb5","fb6","fb7","fb8"].forEach(function(id){ $(id).className = "fb"; });
+  }
+
+  document.querySelectorAll("[data-check]").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      var n = btn.getAttribute("data-check");
+
+      /* --- 1 Merksatz --- */
+      if(n === "1"){
+        var a1 = $("cz1").value, a2 = $("cz2").value;
+        var rev1 = $("rev1");
+        if(a1 === "" || a2 === ""){ say(1,false,"Wähle in beiden Feldern einen Begriff aus."); return; }
+        if(a1 !== "logisch" || a2 !== "physikalisch"){
+          say(1,false,"Noch nicht richtig. Überlege, was sich beim Einrichten eines VLANs an der Verkabelung ändert.");
+          rev1.className = "reveal";
+          return;
+        }
+        say(1,true,"Richtig.");
+        rev1.className = "reveal show";
+        rev1.textContent = "An der Verkabelung ändert sich nichts. Die Geräte bleiben mit denselben Leitungen am selben Switch. Die Trennung entsteht allein durch die Einstellung im Switch. Deshalb heißt sie logisch und nicht physikalisch. Das V in VLAN steht für virtuell und meint genau das.";
+      }
+
+      /* --- 2 Ausgangslage --- */
+      if(n === "2"){
+        var allOne = PORTS.every(function(p){ return state[p] === 1; });
+        if(!allOne){ say(2,false,"Es stehen noch nicht alle Ports auf VLAN 1."); return; }
+        if(log.length < 3){ say(2,false,"Bisher " + log.length + " von 3 Tests. Sende weitere Pings."); return; }
+        say(2,true,"Alle Gewerke liegen im selben VLAN und erreichen sich gegenseitig.");
+      }
+
+      /* --- 3 Gewerke trennen --- */
+      if(n === "3"){
+        if(!allSame(LICHT, 10)){ say(3,false,"Die Lichtports müssen nach dem VLAN-Plan auf VLAN 10 stehen."); return; }
+        if(!allSame(TON, 20)){ say(3,false,"Die Tonports müssen nach dem VLAN-Plan auf VLAN 20 stehen."); return; }
+        if(!allSame(VIDEO, 30)){ say(3,false,"Der Videoport muss nach dem VLAN-Plan auf VLAN 30 stehen."); return; }
+        var innen = tested(function(t){
+          return t.kind==="local" && LICHT.indexOf(t.a)>-1 && LICHT.indexOf(t.b)>-1;
+        });
+        var quer = tested(function(t){
+          return t.kind==="local" && LICHT.indexOf(t.a)>-1 && TON.indexOf(t.b)>-1;
+        });
+        if(!innen){ say(3,false,"Teste noch eine Verbindung innerhalb des Lichtnetzes."); return; }
+        if(!quer){ say(3,false,"Teste noch eine Verbindung vom Licht zum Ton."); return; }
+        say(3,true,"Die Gewerke sind getrennt. Gleiches Netz, gleicher Switch, trotzdem keine Verbindung.");
+      }
+
+      /* --- 4 Gasttechniker --- */
+      if(n === "4"){
+        var g = state[7];
+        if(g === "trunk"){ say(4,false,"Port 7 ist ein Endgerät und sollte kein Trunk sein."); return; }
+        if([1,10,20,30,40].indexOf(g) > -1){ say(4,false,"Wähle für den Gasttechniker ein VLAN, das im Plan noch frei ist."); return; }
+        var mitbewohner = PORTS.some(function(p){
+          return p !== 7 && macsOf(p).length > 0 && state[p] === g;
+        });
+        if(mitbewohner){ say(4,false,"Im VLAN des Gastgeräts hängt noch mindestens ein weiterer belegter Port."); return; }
+        var t7 = 0;
+        log.forEach(function(t){ if(t.a === 7 && !t.reachable) t7++; });
+        if(t7 < 2){ say(4,false,"Bisher " + t7 + " von 2 Tests vom Gastgerät aus."); return; }
+        say(4,true,"Das Gastgerät hängt allein in einem freien VLAN und erreicht niemanden.");
+      }
+
+      /* --- 5 Showdaten-Server --- */
+      if(n === "5"){
+        var s = state[8];
+        var mitLicht = LICHT.some(function(p){ return state[p] === s; });
+        var mitTon   = TON.some(function(p){ return state[p] === s; });
+        var rev5 = $("rev5");
+        if(mitLicht && mitTon){
+          say(5,false,"Licht und Ton liegen offenbar noch im selben VLAN. Trenne die Gewerke zuerst wie in Aufgabe 3.");
+          rev5.className = "reveal";
+          return;
+        }
+        say(5,false,"Mit den VLAN-Einstellungen allein ist diese Aufgabe nicht lösbar.");
+        rev5.className = "reveal show";
+        rev5.textContent = "Ein Access-Port gehört immer zu genau einem VLAN. Der Showdaten-Server kann also entweder im Lichtnetz oder im Tonnetz liegen, nicht in beiden. Ein Switch trennt auf Schicht 2 und kann diese Trennung nicht selbst überbrücken. Damit beide Gewerke den Server erreichen, braucht es ein Gerät auf Schicht 3, also einen Router oder einen Layer-3-Switch. Eine andere Möglichkeit wäre eine zweite Netzwerkkarte im Server, sodass er in beiden VLANs je einen eigenen Anschluss hat.";
+      }
+
+      /* --- 6 Drei Kabel --- */
+      if(n === "6"){
+        var counts = {10:0, 20:0, 30:0};
+        var andere = 0;
+        FREE.forEach(function(p){
+          var v = state[p];
+          if(v === 10 || v === 20 || v === 30){ counts[v]++; }
+          else if(v !== 1){ andere++; }
+        });
+        if(andere > 0){ say(6,false,"Verwende nur die drei VLANs, die in der Regie gebraucht werden."); return; }
+        var fehlend = [10,20,30].filter(function(v){ return counts[v] === 0; });
+        if(fehlend.length){ say(6,false,"Es fehlt noch ein Port für VLAN " + fehlend.join(" und VLAN ") + "."); return; }
+        var doppelt = [10,20,30].filter(function(v){ return counts[v] > 1; });
+        if(doppelt.length){ say(6,false,"Für VLAN " + doppelt.join(" und VLAN ") + " ist mehr als ein Port belegt. Eine Leitung je VLAN genügt."); return; }
+        say(6,true,"Eingerichtet. Drei VLANs belegen drei freie Ports und damit drei Leitungen.");
+        $("follow6").className = "followup show";
+      }
+
+      if(n === "6b"){
+        var ans = $("better").value;
+        var rev6 = $("rev6");
+        if(ans === ""){ say("6b",false,"Wähle eine Antwort aus."); return; }
+        if(ans !== "trunk"){
+          say("6b",false,"Das löst das Problem nicht. Gesucht ist eine Einstellung am Port selbst, die mehrere VLANs gleichzeitig über eine Leitung zulässt.");
+          rev6.className = "reveal";
+          return;
+        }
+        say("6b",true,"Richtig.");
+        rev6.className = "reveal show";
+        rev6.textContent = "Ein Trunk-Port überträgt mehrere VLANs über eine einzige Leitung. Damit der Switch auf der Gegenseite weiß, zu welchem VLAN ein Datenpaket gehört, hängt der sendende Switch eine Kennung an das Paket. Diese Kennung heißt VLAN-Tag und ist im Standard IEEE 802.1Q festgelegt. Der empfangende Switch liest das Tag, entfernt es wieder und leitet das Paket im richtigen VLAN weiter. Voraussetzung ist, dass beide Switches dieselben VLAN-Nummern verwenden.";
+      }
+
+      /* --- 7 Uplink --- */
+      if(n === "7"){
+        var rev7 = $("rev7");
+        if(state[9] !== "trunk"){
+          say(7,false,"Port 9 überträgt bisher nur ein einziges VLAN. So kommt höchstens ein Gewerk in die Regie.");
+          rev7.className = "reveal";
+          return;
+        }
+        var nochBelegt = FREE.some(function(p){ return state[p] !== 1; });
+        if(nochBelegt){ say(7,false,"Die drei Ports aus der vorherigen Aufgabe stehen noch auf einem VLAN. Stelle sie zurück auf VLAN 1."); return; }
+        if(!allSame(LICHT, 10)){ say(7,false,"Die Lichtports müssen auf VLAN 10 stehen, damit sie zur Regie passen."); return; }
+        if(!allSame(TON, 20)){ say(7,false,"Die Tonports müssen auf VLAN 20 stehen, damit sie zur Regie passen."); return; }
+        var b = tested(function(t){ return t.kind==="remote" && t.ip==="192.168.1.21" && t.reachable; });
+        var w = tested(function(t){ return t.kind==="remote" && t.ip==="192.168.1.22" && t.reachable; });
+        if(!b){ say(7,false,"Teste noch eine Verbindung vom Lichtnetz zum Backup-Rechner in der Regie."); return; }
+        if(!w){ say(7,false,"Teste noch eine Verbindung vom Tonnetz zur Stagebox in der Regie."); return; }
+        say(7,true,"Der Trunk steht. Alle Gewerke laufen über eine einzige Leitung, sechs Ports sind wieder frei.");
+        rev7.className = "reveal show";
+        rev7.textContent = "An Port 9 hat der Switch drei MAC-Adressen gelernt. Das ist ein sicheres Zeichen dafür, dass dort kein Endgerät hängt, sondern ein weiterer Switch. Ein Endgerät meldet sich immer nur mit einer einzigen Adresse.";
+      }
+
+      /* --- 8 Nebensaal --- */
+      if(n === "8"){
+        if(state[10] === "trunk"){ trunkTried10 = true; say(8,false,"Ein Switch ohne Verwaltung kann mit einem Trunk nichts anfangen. Stelle Port 10 auf ein einzelnes VLAN."); return; }
+        if(state[10] !== 40){ say(8,false,"Stelle Port 10 auf das VLAN für den Nebensaal aus dem VLAN-Plan."); return; }
+        var versuch = tested(function(t){ return t.kind==="dumb" && !t.reachable; });
+        if(!versuch){ say(8,false,"Teste noch vom Tonnetz aus eine Verbindung zu einer Endstufe im Nebensaal."); return; }
+        say(8,true,"Der Nebensaal liegt in einem eigenen VLAN. Vom Tonnetz aus ist er damit nicht erreichbar.");
+        $("follow8").className = "followup show";
+      }
+
+      if(n === "8b"){
+        var fix = $("fix8").value;
+        var rev8 = $("rev8");
+        if(fix === ""){ say("8b",false,"Wähle eine Antwort aus."); return; }
+        if(fix === "trunk"){
+          say("8b",false,"Probiere es aus. Stelle Port 10 auf Trunk und teste erneut.");
+          trunkTried10 = trunkTried10 || (state[10] === "trunk");
+          return;
+        }
+        if(fix !== "gleich"){
+          say("8b",false,"Das ändert nichts an der Trennung. Die Endstufen liegen in einem anderen VLAN als das Tonpult.");
+          rev8.className = "reveal";
+          return;
+        }
+        if(!trunkTried10){
+          say("8b",false,"Richtig gedacht. Stelle Port 10 aber vorher einmal versuchsweise auf Trunk und beobachte, was passiert.");
+          return;
+        }
+        if(state[10] !== 20){ say("8b",false,"Richtig gedacht. Stelle Port 10 jetzt auf VLAN 20 und teste erneut."); return; }
+        var ok10 = tested(function(t){ return t.kind==="dumb" && t.reachable; });
+        if(!ok10){ say("8b",false,"Teste noch eine Verbindung vom Tonnetz zu einer Endstufe im Nebensaal."); return; }
+        say("8b",true,"Die Endstufen liegen jetzt im Tonnetz und sind bespielbar.");
+        rev8.className = "reveal show";
+        rev8.textContent = "Zwei Dinge stecken in dieser Aufgabe. Erstens kennt ein Switch ohne Verwaltung keine VLANs. Er kann eine Kennung im Paket weder lesen noch entfernen, deshalb gehört an ihn immer ein normaler Access-Port. Alle Geräte dahinter liegen damit zwangsläufig im selben VLAN. Zweitens läuft Audio über Netzwerk innerhalb eines VLANs. Ein eigenes VLAN für den Nebensaal trennt die Endstufen sauber ab, macht sie damit aber auch vom Tonpult aus unerreichbar. Wer beides will, also Trennung und Zugriff, braucht ein Gerät auf Schicht 3 zwischen den VLANs.";
+      }
+    });
+  });
+
+  /* ================= Zurücksetzen ================= */
+  $("reset").addEventListener("click", function(){
+    PORTS.forEach(function(p){ state[p] = 1; });
+    log = [];
+    trunkTried10 = false;
+    setGuess(null);
+    elCmd.value = "";
+    buildPorts();
+    renderGroups();
+    clearFeedback();
+    ["rev5","rev6","rev7","rev8"].forEach(function(id){ $(id).className = "reveal"; });
+    $("follow6").className = "followup";
+    $("follow8").className = "followup";
+    elVerdict.className = "verdict";
+    elTerm.className = "term";
+    elTerm.textContent = "Alle Ports stehen wieder auf VLAN 1. Die Testergebnisse wurden gelöscht.";
+    updateSend();
+  });
+
+  buildPorts();
+  buildSource();
+  updateSend();
+  elUrl.focus();
+})();
+</script>
+</body>
+</html>
