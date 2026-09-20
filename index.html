@@ -1124,5 +1124,131 @@
   elUrl.focus();
 })();
 </script>
+<!-- vt-speicher -->
+<style>
+.vt-tools{max-width:960px;margin:8px auto 40px;padding:0 18px}
+.vt-tools button{font:inherit;font-size:.95em;padding:8px 18px;border:1.5px solid currentColor;background:transparent;color:inherit;cursor:pointer}
+.vt-tools button:hover{background:rgba(128,128,128,.16)}
+@media print{.vt-tools{display:none}}
+</style>
+<div class="vt-tools"><button type="button" id="vt-wipe">Alle Eingaben löschen</button></div>
+<script>
+(function(){
+  var PREFIX = 'vt-vlan:';
+  var EXCLUDE = '#url, #user, #pass, #cmd, #src';
+  var TOGGLES = '';
+  var WIPE_ID = '';
+  var store = null;
+  try { store = window.localStorage; store.setItem(PREFIX + '__t', '1'); store.removeItem(PREFIX + '__t'); }
+  catch (e) { store = null; }
+  if (!store) { return; }
+
+  /* Felder bei jedem Zugriff frisch einsammeln, weil Blaetter Teile neu aufbauen koennen */
+  function collect(){
+    var out = [];
+    var idx = 0;
+    Array.prototype.forEach.call(document.querySelectorAll('input, textarea, select, [contenteditable="true"]'), function(el){
+      var t = (el.type || '').toLowerCase();
+      if (el.tagName === 'INPUT' && /^(button|submit|reset|password|file|hidden|image)$/.test(t)) { return; }
+      if (EXCLUDE && el.matches(EXCLUDE)) { return; }
+      if (el.closest('.vt-tools')) { return; }
+      var key = el.id ? 'id:' + el.id : 'n' + idx;
+      idx++;
+      out.push({ el: el, key: PREFIX + key, kind: (t === 'checkbox' || t === 'radio') ? 'check' : (el.isContentEditable ? 'rich' : 'value') });
+    });
+    return out;
+  }
+  function collectToggles(){
+    return TOGGLES ? Array.prototype.map.call(document.querySelectorAll(TOGGLES), function(el, i){
+      return { el: el, key: PREFIX + 'tg' + i };
+    }) : [];
+  }
+
+  function read(f){
+    if (f.kind === 'check') { return f.el.checked ? '1' : ''; }
+    if (f.kind === 'rich') { return f.el.textContent; }
+    return f.el.value;
+  }
+  function fire(el, type){
+    el.dispatchEvent(new Event(type, { bubbles: true }));
+  }
+
+  collect().forEach(function(f){
+    var saved = null;
+    try { saved = store.getItem(f.key); } catch (e) {}
+    if (saved === null) { return; }
+    if (f.kind === 'check') { f.el.checked = (saved === '1'); fire(f.el, 'change'); }
+    else if (f.kind === 'rich') { f.el.textContent = saved; fire(f.el, 'input'); }
+    else {
+      f.el.value = saved;
+      fire(f.el, f.el.tagName === 'SELECT' ? 'change' : 'input');
+    }
+  });
+  collectToggles().forEach(function(t){
+    var saved = null;
+    try { saved = store.getItem(t.key); } catch (e) {}
+    if (saved !== null && t.el.getAttribute('aria-pressed') !== saved) { t.el.click(); }
+  });
+
+  var wiping = false;
+  var timer = null;
+  function save(){
+    if (wiping) { return; }
+    collect().forEach(function(f){
+      var val = read(f);
+      try {
+        if (val && String(val).trim()) { store.setItem(f.key, val); } else { store.removeItem(f.key); }
+      } catch (e) {}
+    });
+    collectToggles().forEach(function(t){
+      try {
+        if (t.el.getAttribute('aria-pressed') === 'true') { store.setItem(t.key, 'true'); } else { store.removeItem(t.key); }
+      } catch (e) {}
+    });
+  }
+  function queue(){
+    if (timer) { clearTimeout(timer); }
+    timer = setTimeout(save, 400);
+  }
+  document.addEventListener('input', queue, true);
+  document.addEventListener('change', queue, true);
+  if (TOGGLES) { document.addEventListener('click', queue, true); }
+  window.addEventListener('pagehide', save);
+  document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'hidden') { save(); } });
+
+  function dropAll(){
+    for (var i = store.length - 1; i >= 0; i--) {
+      var k = store.key(i);
+      if (k && k.indexOf(PREFIX) === 0) { try { store.removeItem(k); } catch (e) {} }
+    }
+  }
+
+  if (WIPE_ID) {
+    /* vorhandener Zuruecksetzen-Button: nach seinem Handler den Speicher angleichen */
+    var own = document.getElementById(WIPE_ID);
+    if (own) { own.addEventListener('click', function(){ if (timer) { clearTimeout(timer); } save(); }); }
+    return;
+  }
+  var wipe = document.getElementById('vt-wipe');
+  if (wipe) {
+    wipe.addEventListener('click', function(){
+      if (!window.confirm('Wirklich alle Eingaben auf diesem Blatt löschen?')) { return; }
+      wiping = true;
+      if (timer) { clearTimeout(timer); }
+      dropAll();
+      /* Felder leeren, sonst stellt Firefox sie beim Neuladen wieder her */
+      collect().forEach(function(f){
+        try {
+          if (f.kind === 'check') { f.el.checked = false; }
+          else if (f.kind === 'rich') { f.el.textContent = ''; }
+          else if (f.el.tagName === 'SELECT') { f.el.selectedIndex = 0; }
+          else { f.el.value = ''; }
+        } catch (e) {}
+      });
+      window.location.reload();
+    });
+  }
+})();
+</script>
 </body>
 </html>
